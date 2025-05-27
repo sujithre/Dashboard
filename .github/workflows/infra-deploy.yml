@@ -2,11 +2,11 @@ name: Infrastructure Deployment
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
     paths:
       - 'terraform/**'
   pull_request:
-    branches: [ main ]
+    branches: [ dev ]
     paths:
       - 'terraform/**'
   workflow_dispatch:

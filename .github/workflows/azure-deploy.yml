@@ -3,13 +3,14 @@ name: Build and Deploy Application
 on:
   workflow_run:
     workflows: ["Infrastructure Deployment"]
-    branches: [main]
+    branches: [dev]
     types:
       - completed
   pull_request:
-    branches: [main]
+    branches: [dev]
     paths-ignore:
       - 'terraform/**'
+  workflow_dispatch:
 
 env:
   CONTAINER_NAME: "novartis"
