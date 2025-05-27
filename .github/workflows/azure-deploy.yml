@@ -11,17 +11,27 @@ on:
     paths-ignore:
       - 'terraform/**'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
 
 env:
   CONTAINER_NAME: "novartis"
-  RESOURCE_GROUP: "rg-novartis-dev"
-  CONTAINER_APP_NAME: "ca-novartis-dev"
-  CONTAINER_APP_ENVIRONMENT: "cae-novartis-dev"
+  RESOURCE_GROUP: "rg-novartis-${{ github.event.inputs.environment || 'dev' }}"
+  CONTAINER_APP_NAME: "ca-novartis-${{ github.event.inputs.environment || 'dev' }}"
+  CONTAINER_APP_ENVIRONMENT: "cae-novartis-${{ github.event.inputs.environment || 'dev' }}"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
     
     steps:
     - uses: actions/checkout@v3
