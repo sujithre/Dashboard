@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Analysis Dashboard</title>
+    
+    <!-- Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {}
+            }
+        }
+    </script>
+    <!-- Custom styles -->
+    <style>
+        .dashboard-card {
+            @layer components {
+                background-color: white;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+        }
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.75rem;
+        }
+        .data-table {
+            width: 100%;
+            font-size: 0.875rem;
+            text-align: left;
+        }
+        .data-table thead {
+            background-color: #1f2937;
+            color: white;
+        }
+        .data-table th {
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+        }
+        .data-table tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .data-table tbody tr:hover {
+            background-color: #f3f4f6;
+        }
+        .data-table td {
+            padding: 0.75rem 1.5rem;
+        }
+        .tab-active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .tab-inactive:hover {
+            background-color: #e5e7eb;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="flex">
+            <!-- Navigation Menu -->
+            <nav class="p-4">
+                <button 
+                    data-tab="overview"
+                    class="block w-full text-left px-4 py-2 rounded mb-1 tab-active">
+                    Overview
+                </button>
+                <button 
+                    data-tab="subscriptions"
+                    class="block w-full text-left px-4 py-2 rounded mb-1 tab-inactive">
+                    Subscriptions
+                </button>
+                <button 
+                    data-tab="serviceNames"
+                    class="block w-full text-left px-4 py-2 rounded mb-1 tab-inactive">
+                    Service Names
+                </button>
+                <button 
+                    data-tab="applications"
+                    class="block w-full text-left px-4 py-2 rounded mb-1 tab-inactive">
+                    Applications
+                </button>
+                <button 
+                    data-tab="resources"
+                    class="block w-full text-left px-4 py-2 rounded mb-1 tab-inactive">
+                    Resources
+                </button>
+            </nav>
+
+            <!-- Filters Section -->
+            <div class="p-4 border-t">
+                <h2 class="font-semibold mb-2">Filters</h2>                <div class="mb-3">
+                    <label for="filter-date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <select id="filter-date" v-model="filterStartDate" class="w-full rounded border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                        <option value="">All Dates</option>
+                        <option v-for="date in uniqueDates" :value="date">{{ date }}</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subscription ID</label>
+                    <select v-model="filterSubscription" class="w-full rounded border-gray-300 p-1 text-sm">
+                        <option value="">All</option>
+                        <option v-for="sub in uniqueSubscriptions" :value="sub">{{ sub }}</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Application</label>
+                    <select v-model="filterApplication" class="w-full rounded border-gray-300 p-1 text-sm">
+                        <option value="">All</option>
+                        <option v-for="app in uniqueApplications" :value="app">{{ app }}</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Service Name</label>
+                    <select v-model="filterServiceName" class="w-full rounded border-gray-300 p-1 text-sm">
+                        <option value="">All</option>
+                        <option v-for="service in uniqueServiceNames" :value="service">{{ service }}</option>
+                    </select>
+                </div>
+                <button @click="clearFilters" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm mt-2">
+                    Clear Filters
+                </button>
+            </div>
+        </div>        <!-- Main Content -->
+        <div class="flex-1 p-6">            <div class="bg-indigo-700 text-white p-4 rounded-lg mb-6">                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h1 class="text-2xl font-bold">Azure Cost Dashboard</h1>
+                        <p class="text-sm">Last Refreshed Date: 2025-05-26</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white text-indigo-800 p-3 rounded-lg">
+                        <p class="text-sm">Count of Subscriptions</p>
+                        <p class="text-2xl font-bold">{{ overviewMetrics.subscriptionCount }}</p>
+                    </div>
+                    <div class="bg-white text-indigo-800 p-3 rounded-lg">
+                        <p class="text-sm">Overall Cost</p>
+                        <p class="text-2xl font-bold">${{ overviewMetrics.formattedTotalCost }}M</p>
+                    </div>
+                </div>
+            </div><!-- Overview Tab -->
+            <div data-tab-content="overview">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Sum of Cost by StartDate Chart removed temporarily -->                    <div class="dashboard-card col-span-2">
+                        <h2 class="card-title">Dashboard Overview</h2>
+                        <p class="text-gray-600">Welcome to the Azure Cost Analysis Dashboard. Use the tabs to navigate between different views and filters to refine the data.</p>
+                    </div><!-- Top 5 Subscriptions -->                    <div class="dashboard-card">
+                        <h2 class="card-title">Top 5 Subscriptions</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left">SUBSCRIPTIONNAME</th>
+                                    <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in top5Subscriptions %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-3">{{ sub.SUBSCRIPTIONNAME }}</td>
+                                    <td class="px-6 py-3 text-right">${{ sub.Formatted_Cost }}M</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="font-bold bg-gray-100">
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3 text-right">${{ formattedSubscriptionTotal }}M</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div><!-- Top 5 Applications -->                    <div class="dashboard-card">
+                        <h2 class="card-title">Top 5 Applications</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left">APPLICATION</th>
+                                    <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for application in top5Applications %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-3">{{ application.APPLICATION }}</td>
+                                    <td class="px-6 py-3 text-right">${{ application.Formatted_Cost }}M</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="font-bold bg-gray-100">
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3 text-right">${{ formattedApplicationsTotal }}M</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div><!-- Top 5 Service Names -->                    <div class="dashboard-card">
+                        <h2 class="card-title">Top 5 Service Names</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left">ServiceName</th>
+                                    <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for service in top5ServiceNames %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-3">{{ service.ServiceName }}</td>
+                                    <td class="px-6 py-3 text-right">${{ service.Formatted_Cost }}M</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="font-bold bg-gray-100">
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3 text-right">${{ formattedServiceNamesTotal }}M</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div><!-- Top 5 Resources -->                    <div class="dashboard-card">
+                        <h2 class="card-title">Top 5 Resources</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 text-left">Resource</th>
+                                    <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for resource in top5Resources %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-3">{{ resource.Resource }}</td>
+                                    <td class="px-6 py-3 text-right">${{ resource.Formatted_Cost }}M</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="font-bold bg-gray-100">
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3 text-right">${{ formattedResourcesTotal }}M</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>            <!-- Subscriptions Tab -->
+            <div data-tab-content="subscriptions" style="display: none;">
+                <div class="dashboard-card">
+                    <h2 class="card-title">Subscription Cost Analysis</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>                                <th class="px-6 py-3 text-left">SUBSCRIPTIONNAME</th>
+                                <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                <th class="px-6 py-3 text-right w-24">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in top5Subscriptions %}
+                            <tr>                                <td class="px-6 py-3">{{ sub.SUBSCRIPTIONNAME }}</td>
+                                <td class="px-6 py-3 text-right">${{ sub.Formatted_Cost }}M</td>
+                                <td class="px-6 py-3 text-right">{{ ((sub.Sum_of_Cost / subscriptionTotal) * 100) | round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="font-bold bg-gray-100">
+                                <td>Total</td>
+                                <td>${{ formattedSubscriptionTotal }}M</td>
+                                <td>100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>            <!-- Service Names Tab -->
+            <div data-tab-content="serviceNames" style="display: none;">
+                <div class="dashboard-card">
+                    <h2 class="card-title">Service Names Cost Analysis</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>                                <th class="px-6 py-3 text-left">ServiceName</th>
+                                <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                <th class="px-6 py-3 text-right w-24">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in top5ServiceNames %}
+                            <tr>                                <td class="px-6 py-3">{{ service.ServiceName }}</td>
+                                <td class="px-6 py-3 text-right">${{ service.Formatted_Cost }}M</td>
+                                <td class="px-6 py-3 text-right">{{ ((service.Sum_of_Cost / serviceNamesTotal) * 100) | round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="font-bold bg-gray-100">
+                                <td>Total</td>
+                                <td>${{ formattedServiceNamesTotal }}M</td>
+                                <td>100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>            <!-- Applications Tab -->
+            <div data-tab-content="applications" style="display: none;">
+                <div class="dashboard-card">
+                    <h2 class="card-title">Applications Cost Analysis</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>                                <th class="px-6 py-3 text-left">APPLICATION</th>
+                                <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                <th class="px-6 py-3 text-right w-24">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in top5Applications %}
+                            <tr>                                <td class="px-6 py-3">{{ application.APPLICATION }}</td>
+                                <td class="px-6 py-3 text-right">${{ application.Formatted_Cost }}M</td>
+                                <td class="px-6 py-3 text-right">{{ ((application.Sum_of_Cost / applicationsTotal) * 100) | round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="font-bold bg-gray-100">
+                                <td>Total</td>
+                                <td>${{ formattedApplicationsTotal }}M</td>
+                                <td>100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>            <!-- Resources Tab -->
+            <div data-tab-content="resources" style="display: none;">
+                <div class="dashboard-card">
+                    <h2 class="card-title">Resources Cost Analysis</h2>
+                    <table class="data-table">
+                        <thead>                            <tr>
+                                <th class="px-6 py-3 text-left">Resource</th>
+                                <th class="px-6 py-3 text-right w-32">Sum of Cost</th>
+                                <th class="px-6 py-3 text-right w-24">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resource in top5Resources %}
+                            <tr>                                <td class="px-6 py-3">{{ resource.Resource }}</td>
+                                <td class="px-6 py-3 text-right">${{ resource.Formatted_Cost }}M</td>
+                                <td class="px-6 py-3 text-right">{{ ((resource.Sum_of_Cost / resourcesTotal) * 100) | round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="font-bold bg-gray-100">
+                                <td>Total</td>
+                                <td>${{ formattedResourcesTotal }}M</td>
+                                <td>100%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialize tabs and charts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set active tab from server-side
+            const activeTab = '{{ activeTab }}';
+            
+            // Simple tab switching logic
+            const tabButtons = document.querySelectorAll('[data-tab]');
+            const tabContents = document.querySelectorAll('[data-tab-content]');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.getAttribute('data-tab');
+                    
+                    // Update active button styling
+                    tabButtons.forEach(btn => {
+                        if(btn.getAttribute('data-tab') === tabName) {
+                            btn.classList.add('tab-active');
+                            btn.classList.remove('tab-inactive');
+                        } else {
+                            btn.classList.remove('tab-active');
+                            btn.classList.add('tab-inactive');
+                        }
+                    });
+                    
+                    // Show selected tab content
+                    tabContents.forEach(content => {
+                        if(content.getAttribute('data-tab-content') === tabName) {
+                            content.style.display = 'block';
+                        } else {
+                            content.style.display = 'none';
+                        }
+                    });
+                });
+                
+                // Set initial active state
+                if(button.getAttribute('data-tab') === activeTab) {
+                    button.classList.add('tab-active');
+                    button.classList.remove('tab-inactive');
+                } else {
+                    button.classList.remove('tab-active');
+                    button.classList.add('tab-inactive');
+                }
+            });
+              // Chart initialization removed temporarily
+            
+            // Set initial tab content state
+            tabContents.forEach(content => {
+                if(content.getAttribute('data-tab-content') === activeTab) {
+                    content.style.display = 'block';
+                } else {
+                    content.style.display = 'none';
+                }            });
+
+            // Initialize Vue instance            new Vue({
+                el: '#app',
+                data: {
+                    filterStartDate: '',
+                    filterSubscription: '',
+                    filterApplication: '',
+                    filterServiceName: '',
+                    uniqueDates: JSON.parse('{{ dates | tojson | safe }}'),
+                    uniqueSubscriptions: JSON.parse('{{ subscriptions | tojson | safe }}'),
+                    uniqueApplications: JSON.parse('{{ applications | tojson | safe }}'),
+                    uniqueServiceNames: JSON.parse('{{ serviceNames | tojson | safe }}'),
+                    overviewMetrics: {
+                        subscriptionCount: parseInt('{{ overviewMetrics.subscriptionCount }}'),
+                        formattedTotalCost: '{{ overviewMetrics.formattedTotalCost }}'
+                    }
+                },
+                methods: {
+                    clearFilters() {
+                        this.filterStartDate = '';
+                        this.filterSubscription = '';
+                        this.filterApplication = '';
+                        this.filterServiceName = '';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
