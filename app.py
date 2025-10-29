@@ -5,10 +5,6 @@ from functools import lru_cache
 
 app = Flask(__name__)
 
-# Cache for CSV data to avoid re-reading the file on every request
-_csv_cache = None
-_csv_cache_timestamp = None
-
 
 # Function to load CSV data with caching
 @lru_cache(maxsize=1)
