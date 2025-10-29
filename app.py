@@ -1,12 +1,19 @@
 from flask import Flask, render_template, jsonify
 import csv
 from collections import defaultdict
+from functools import lru_cache
 
 app = Flask(__name__)
 
+# Cache for CSV data to avoid re-reading the file on every request
+_csv_cache = None
+_csv_cache_timestamp = None
 
-# Function to load CSV data
-def load_csv_data():
+
+# Function to load CSV data with caching
+@lru_cache(maxsize=1)
+def _load_csv_from_file():
+    """Load CSV data from file (cached)."""
     data = []
     try:
         # Adjust path as needed
@@ -25,8 +32,20 @@ def load_csv_data():
         return []
 
 
+def load_csv_data():
+    """Load CSV data with caching."""
+    return _load_csv_from_file()
+
+
 @app.route("/")
 def index():
+    """
+    Main dashboard route that renders the index page with cost analysis data.
+
+    Returns:
+        Rendered HTML template with overview metrics, top 5 costs by various dimensions,
+        and filter options for interactive data exploration.
+    """
     # Load data to calculate metrics
     data = load_csv_data()
 
@@ -170,6 +189,14 @@ def index():
 
 @app.route("/api/top5Subscriptions")
 def top5_subscriptions():
+    """
+    API endpoint to get the top 5 subscriptions by total cost.
+
+    Returns:
+        JSON response containing:
+        - data: List of top 5 subscriptions with their costs
+        - total: Sum of costs for the top 5 subscriptions
+    """
     data = load_csv_data()
 
     # Group by SubscriptionName and sum costs
@@ -196,6 +223,14 @@ def top5_subscriptions():
 
 @app.route("/api/top5Applications")
 def top5_applications():
+    """
+    API endpoint to get the top 5 applications by total cost.
+
+    Returns:
+        JSON response containing:
+        - data: List of top 5 applications with their costs
+        - total: Sum of costs for the top 5 applications
+    """
     data = load_csv_data()
 
     # Group by APPLICATION and sum costs
@@ -220,6 +255,14 @@ def top5_applications():
 
 @app.route("/api/top5ServiceNames")
 def top5_service_names():
+    """
+    API endpoint to get the top 5 service names by total cost.
+
+    Returns:
+        JSON response containing:
+        - data: List of top 5 service names with their costs
+        - total: Sum of costs for the top 5 service names
+    """
     data = load_csv_data()
 
     # Group by ServiceName and sum costs
@@ -244,6 +287,14 @@ def top5_service_names():
 
 @app.route("/api/top5Resources")
 def top5_resources():
+    """
+    API endpoint to get the top 5 resource groups by total cost.
+
+    Returns:
+        JSON response containing:
+        - data: List of top 5 resource groups with their costs
+        - total: Sum of costs for the top 5 resource groups
+    """
     data = load_csv_data()
 
     # Group by ResourceGroupName and sum costs
@@ -268,6 +319,14 @@ def top5_resources():
 
 @app.route("/api/SumofCost")
 def sum_of_cost_by_date():
+    """
+    API endpoint to get the sum of costs grouped by date.
+
+    Returns:
+        JSON response containing:
+        - dates: List of dates in sorted order
+        - costs: List of total costs corresponding to each date
+    """
     data = load_csv_data()
 
     # Group by StartDate and sum costs
@@ -287,6 +346,12 @@ def sum_of_cost_by_date():
 
 @app.route("/api/data")
 def get_data():
+    """
+    API endpoint to get all cost data for filtering purposes.
+
+    Returns:
+        JSON response containing all cost records from the CSV file
+    """
     # Get all data for filtering purposes
     data = load_csv_data()
     return jsonify(data)
