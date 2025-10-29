@@ -1,0 +1,9 @@
+SubscriptionId,ServiceName,ResourceGroupName,Cost,APPLICATION,SUBSCRIPTIONNAME,CLARITYID,BILLINGCONTACT,COSTCENTER,ENVIRONMENT,DISPLAYNAME,EMAIL,StartDate
+sub-001,Virtual Machines,rg-prod-east,1500.50,WebApp,Production Subscription,C001,billing@example.com,CC001,Production,VM-Prod-01,admin@example.com,2024-02-01
+sub-001,Storage,rg-prod-east,250.75,WebApp,Production Subscription,C001,billing@example.com,CC001,Production,Storage-Prod,admin@example.com,2024-02-01
+sub-002,Azure SQL Database,rg-dev-west,800.25,DataApp,Development Subscription,C002,billing@example.com,CC002,Development,SQL-Dev-01,dev@example.com,2024-02-01
+sub-002,App Service,rg-dev-west,450.00,DataApp,Development Subscription,C002,billing@example.com,CC002,Development,AppSvc-Dev,dev@example.com,2024-02-01
+sub-003,Kubernetes Service,rg-test-central,2100.00,MobileApp,Test Subscription,C003,billing@example.com,CC003,Test,AKS-Test-01,test@example.com,2024-02-01
+sub-001,Virtual Machines,rg-prod-east,1600.00,WebApp,Production Subscription,C001,billing@example.com,CC001,Production,VM-Prod-02,admin@example.com,2024-02-02
+sub-003,Storage,rg-test-central,180.50,MobileApp,Test Subscription,C003,billing@example.com,CC003,Test,Storage-Test,test@example.com,2024-02-02
+sub-002,Cosmos DB,rg-dev-west,950.00,DataApp,Development Subscription,C002,billing@example.com,CC002,Development,Cosmos-Dev,dev@example.com,2024-02-02
